@@ -24,6 +24,9 @@ PASTE = 8
 ROUNDED_SELECT=9
 INCREASE_RADIUS=10
 DECREASE_RADIUS=11
+SELECT_GROUP=12
+GROUP_OBJECTS=13
+UNGROUP_OBJECTS=14
 
 # Object class
 class Object:
@@ -104,7 +107,7 @@ class Toolbar:
         self.selected_object = obj
 
     def draw(self, screen):
-        # Draw toolbar buttons
+    # Draw toolbar buttons
         pygame.draw.rect(screen, TOOLBAR_COLOR, (0, HEIGHT - 100, WIDTH, 100))  # Toolbar area
 
         draw_line_button_color = SELECTED_BUTTON_COLOR if self.selected_tool == DRAW_LINE else BUTTON_COLOR
@@ -116,56 +119,101 @@ class Toolbar:
         draw_rounded_button_color = SELECTED_BUTTON_COLOR if self.selected_tool == ROUNDED_SELECT else BUTTON_COLOR
         increase_rounded_button_color = SELECTED_BUTTON_COLOR if self.selected_tool == INCREASE_RADIUS else BUTTON_COLOR
         decrease_rounded_button_color = SELECTED_BUTTON_COLOR if self.selected_tool == DECREASE_RADIUS else BUTTON_COLOR
+        select_group_button_colour = SELECTED_BUTTON_COLOR if self.selected_tool == SELECT_GROUP else BUTTON_COLOR
 
         # Button widths
-        button_width = 60  # Reduced button width
-        button_height = 50
+        button_width = 50  # Decreased button width
+        button_height = 40  # Decreased button height
 
         # Draw Line button
         pygame.draw.rect(screen, draw_line_button_color, (20, HEIGHT - 80, button_width, button_height))
-
+        draw_line_label = pygame.font.SysFont(None, 20).render("Line", True, (0, 0, 0))  # Increased text size
+        screen.blit(draw_line_label, (30, HEIGHT - 85))  # Adjusted position
+    
         # Draw Rectangle button
-        pygame.draw.rect(screen, draw_rect_button_color, (100, HEIGHT - 80, button_width, button_height))
+        pygame.draw.rect(screen, draw_rect_button_color, (90, HEIGHT - 80, button_width, button_height))  # Adjusted position
+        draw_rect_label = pygame.font.SysFont(None, 20).render("Rect", True, (0, 0, 0))  # Increased text size
+        screen.blit(draw_rect_label, (100, HEIGHT - 85))  # Adjusted position
 
         # Draw color buttons
-        color_buttons_pos = [(180, HEIGHT - 80), (260, HEIGHT - 80), (340, HEIGHT - 80)]  # Adjusted positions
-        for i, color in enumerate([(255, 0, 0), (0, 255, 0), (0, 0, 255)]):
+        color_buttons_pos = [(160, HEIGHT - 80), (230, HEIGHT - 80), (300, HEIGHT - 80), (370, HEIGHT - 80)]  # Adjusted positions
+        color_labels = ["Red", "Green", "Blue", "Black"]  # Color labels
+        for i, color in enumerate([(255, 0, 0), (0, 255, 0), (0, 0, 255), (0, 0, 0)]):
             pygame.draw.rect(screen, color, (color_buttons_pos[i][0], color_buttons_pos[i][1], button_height, button_height))
+            color_label = pygame.font.SysFont(None, 20).render(color_labels[i], True, (0, 0, 0))  # Increased text size
+            screen.blit(color_label, (color_buttons_pos[i][0] + 5, HEIGHT - 85))  # Adjusted position
 
         # Draw select object button
-        pygame.draw.rect(screen, draw_select_button_color, (440, HEIGHT - 80, button_width, button_height))  # Adjusted position
-        select_label = pygame.font.SysFont(None, 20).render("Select", True, (0, 0, 0))  # Shortened label
-        screen.blit(select_label, (455, HEIGHT - 70))  # Adjusted position
+        pygame.draw.rect(screen, draw_select_button_color, (450, HEIGHT - 80, button_width, button_height))  # Adjusted position
+        select_label = pygame.font.SysFont(None, 20).render("Select", True, (0, 0, 0))  # Increased text size
+        screen.blit(select_label, (460, HEIGHT - 85))  # Adjusted position
 
         # Draw delete object button
         pygame.draw.rect(screen, draw_delete_button_color, (520, HEIGHT - 80, button_width, button_height))  # Adjusted position
-        delete_label = pygame.font.SysFont(None, 20).render("X", True, (0, 0, 0))
-        screen.blit(delete_label, (535, HEIGHT - 70))
+        delete_label = pygame.font.SysFont(None, 20).render("Delete", True, (0, 0, 0))  # Increased text size
+        screen.blit(delete_label, (530, HEIGHT - 85))  # Adjusted position
 
         # Draw move object button
-        pygame.draw.rect(screen, draw_move_button_color, (600, HEIGHT - 80, button_width, button_height))  # Adjusted position
-        move_label = pygame.font.SysFont(None, 20).render("Move", True, (0, 0, 0))  # Shortened label
-        screen.blit(move_label, (615, HEIGHT - 70))  # Adjusted position
+        pygame.draw.rect(screen, draw_move_button_color, (590, HEIGHT - 80, button_width, button_height))  # Adjusted position
+        move_label = pygame.font.SysFont(None, 20).render("Move", True, (0, 0, 0))  # Increased text size
+        screen.blit(move_label, (600, HEIGHT - 85))  # Adjusted position
 
         # Draw copy object button
-        pygame.draw.rect(screen, draw_copy_button_color, (680, HEIGHT - 80, button_width, button_height))  # Adjusted position
-        copy_label = pygame.font.SysFont(None, 20).render("Copy", True, (0, 0, 0))  # Added copy button
-        screen.blit(copy_label, (695, HEIGHT - 70))  # Adjusted position
+        pygame.draw.rect(screen, draw_copy_button_color, (660, HEIGHT - 80, button_width, button_height))  # Adjusted position
+        copy_label = pygame.font.SysFont(None, 20).render("Copy", True, (0, 0, 0))  # Increased text size
+        screen.blit(copy_label, (670, HEIGHT - 85))  # Adjusted position
 
         # Draw select rounded edges button
-        pygame.draw.rect(screen, draw_rounded_button_color, (760, HEIGHT - 80, button_width, button_height))  # Adjusted position
-        rounded_label = pygame.font.SysFont(None, 15).render("Rounded", True, (0, 0, 0))  # Shortened label
-        screen.blit(rounded_label, (765, HEIGHT - 90))  # Adjusted position
+        pygame.draw.rect(screen, draw_rounded_button_color, (730, HEIGHT - 80, button_width, button_height))  # Adjusted position
+        rounded_label = pygame.font.SysFont(None, 20).render("Rounded", True, (0, 0, 0))  # Increased text size
+        screen.blit(rounded_label, (740, HEIGHT - 85))  # Adjusted position
 
         # Draw increase radius button
-        pygame.draw.rect(screen, increase_rounded_button_color, (840, HEIGHT - 80, button_width, button_height))  # Adjusted position
-        increase_label = pygame.font.SysFont(None, 15).render("+", True, (0, 0, 0))
-        screen.blit(increase_label, (865, HEIGHT - 70))
+        pygame.draw.rect(screen, increase_rounded_button_color, (800, HEIGHT - 80, button_width, button_height))  # Adjusted position
+        increase_label = pygame.font.SysFont(None, 20).render("+", True, (0, 0, 0))  # Increased text size
+        screen.blit(increase_label, (810, HEIGHT - 85))  # Adjusted position
 
         # Draw decrease radius button
-        pygame.draw.rect(screen, decrease_rounded_button_color, (920, HEIGHT - 80, button_width, button_height))  # Adjusted position
-        decrease_label = pygame.font.SysFont(None, 15).render("-", True, (0, 0, 0))
-        screen.blit(decrease_label, (945, HEIGHT - 70))
+        pygame.draw.rect(screen, decrease_rounded_button_color, (870, HEIGHT - 80, button_width, button_height))  # Adjusted position
+        decrease_label = pygame.font.SysFont(None, 20).render("-", True, (0, 0, 0))  # Increased text size
+        screen.blit(decrease_label, (880, HEIGHT - 85))  # Adjusted position
+
+        # Draw select objects to group button
+        pygame.draw.rect(screen, BUTTON_COLOR, (940, HEIGHT - 80, button_width, button_height))  # Adjusted position
+        select_objects_label = pygame.font.SysFont(None, 20).render("Select", True, (0, 0, 0))  # Increased text size
+        screen.blit(select_objects_label, (950, HEIGHT - 85))  # Adjusted position
+
+        # Draw group selected objects button
+        pygame.draw.rect(screen, BUTTON_COLOR, (1010, HEIGHT - 80, button_width, button_height))  # Adjusted position
+        group_selected_label = pygame.font.SysFont(None, 20).render("Group", True, (0, 0, 0))  # Increased text size
+        screen.blit(group_selected_label, (1020, HEIGHT - 85))  # Adjusted position
+
+        # Draw ungroup button
+        pygame.draw.rect(screen, BUTTON_COLOR, (1080, HEIGHT - 80, button_width, button_height))  # Adjusted position
+        ungroup_label = pygame.font.SysFont(None, 20).render("Ungroup", True, (0, 0, 0))  # Increased text size
+        screen.blit(ungroup_label, (1090, HEIGHT - 85))  # Adjusted position
+
+
+
+# GroupedObject class
+class GroupedObject(Object):
+    def __init__(self):
+        super().__init__()
+        self.objects = []  # List to hold individual objects in the group
+
+    def add_object(self, obj):
+        self.objects.append(obj)
+
+    def remove_object(self, obj):
+        self.objects.remove(obj)
+
+    def draw(self, canvas):
+        for obj in self.objects:
+            obj.draw(canvas)
+
+    def move(self, pos):
+        for obj in self.objects:
+            obj.move(pos)
 
 
 # Main game class
@@ -219,30 +267,33 @@ class DrawingApp:
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     if HEIGHT - 100 <= event.pos[1] < HEIGHT:  # Check if toolbar area clicked
                         # Determine which tool was selected
-                        if 20 <= event.pos[0] < 80:
+                        if 20 <= event.pos[0] < 70:
                             self.toolbar.select_tool(DRAW_LINE)
-                        elif 100 <= event.pos[0] < 160:
+                        elif 90 <= event.pos[0] < 140:
                             self.toolbar.select_tool(DRAW_RECT)
-                        elif 180 <= event.pos[0] < 240:
+                        elif 160 <= event.pos[0] < 210:
                             self.toolbar.selected_object = None
                             self.toolbar.select_color((255, 0, 0))
-                        elif 260 <= event.pos[0] < 320:
+                        elif 230 <= event.pos[0] < 280:
                             self.toolbar.selected_object = None
                             self.toolbar.select_color((0, 255, 0))
-                        elif 340 <= event.pos[0] < 400:
+                        elif 300 <= event.pos[0] < 350:
                             self.toolbar.selected_object = None
                             self.toolbar.select_color((0, 0, 255))
-                        elif 440 <= event.pos[0] < 500 and HEIGHT - 80 <= event.pos[1] < HEIGHT - 30:
+                        elif 370 <= event.pos[0] < 420:
+                            self.toolbar.selected_object = None
+                            self.toolbar.select_color((0, 0, 0))
+                        elif 450 <= event.pos[0] < 500 and HEIGHT - 80 <= event.pos[1] < HEIGHT - 30:
                             self.toolbar.select_tool(SELECT_OBJ)
-                        elif 520 <= event.pos[0] < 580 and HEIGHT - 80 <= event.pos[1] < HEIGHT - 30:
+                        elif 520 <= event.pos[0] < 570 and HEIGHT - 80 <= event.pos[1] < HEIGHT - 30:
                             self.toolbar.select_tool(DELETE_OBJ)
-                        elif 600 <= event.pos[0] < 660 and HEIGHT - 80 <= event.pos[1] < HEIGHT - 30:
+                        elif 590 <= event.pos[0] < 640 and HEIGHT - 80 <= event.pos[1] < HEIGHT - 30:
                             self.toolbar.select_tool(MOVE_OBJ)
-                        elif 680 <= event.pos[0] < 740 and HEIGHT - 80 <= event.pos[1] < HEIGHT - 30:
+                        elif 660 <= event.pos[0] < 710 and HEIGHT - 80 <= event.pos[1] < HEIGHT - 30:
                             self.toolbar.select_tool(COPY)
-                        elif 760 <= event.pos[0] < 820 and HEIGHT - 80 <= event.pos[1] < HEIGHT - 30:
+                        elif 730 <= event.pos[0] < 780 and HEIGHT - 80 <= event.pos[1] < HEIGHT - 30:
                             self.toolbar.select_tool(ROUNDED_SELECT)
-                        elif 840 <= event.pos[0] < 900 and HEIGHT - 80 <= event.pos[1] < HEIGHT - 30:
+                        elif 800 <= event.pos[0] < 850 and HEIGHT - 80 <= event.pos[1] < HEIGHT - 30:
                             if isinstance(self.toolbar.selected_object, Rectangle):
                                 self.toolbar.selected_object.rounded=True
                                 self.toolbar.selected_object.radius += 5
@@ -250,13 +301,19 @@ class DrawingApp:
                                 self.canvas.fill(CANVAS_COLOR)  # Clear the canvas
                                 for obj in self.objects:
                                     obj.draw(self.canvas)
-                        elif 920 <= event.pos[0] < 980 and HEIGHT - 80 <= event.pos[1] < HEIGHT - 30:
+                        elif 870 <= event.pos[0] < 920 and HEIGHT - 80 <= event.pos[1] < HEIGHT - 30:
                             if isinstance(self.toolbar.selected_object, Rectangle) and self.toolbar.selected_object.rounded:
                                 if self.toolbar.selected_object.radius >= 5:
                                     self.toolbar.selected_object.radius -= 5
                                     self.canvas.fill(CANVAS_COLOR)  # Clear the canvas
                                     for obj in self.objects:
                                         obj.draw(self.canvas)
+                        elif 940 <= event.pos[0] < 990 and HEIGHT - 80 <= event.pos[1] < HEIGHT - 30:
+                            self.toolbar.select_tool(SELECT_GROUP)
+                        elif 1010 <= event.pos[0] < 1060 and HEIGHT - 80 <= event.pos[1] < HEIGHT - 30:
+                            self.toolbar.select_tool(GROUP_OBJECTS)
+                        elif 1080 <= event.pos[0] < 1130 and HEIGHT - 80 <= event.pos[1] < HEIGHT - 30:
+                            self.toolbar.select_tool(UNGROUP_OBJECTS)
                         else:
                             self.toolbar.select_button_color = BUTTON_COLOR
                             self.toolbar.radius_button_color = BUTTON_COLOR
@@ -314,6 +371,15 @@ class DrawingApp:
                             
                         elif self.toolbar.selected_tool== ROUNDED_SELECT:
                             self.toolbar.selected_object = self.get_selected_object(event.pos)
+                            
+                        elif self.toolbar.selected_tool== SELECT_GROUP:
+                            pass
+                        
+                        elif self.toolbar.selected_tool == GROUP_OBJECTS:
+                            pass
+                        
+                        elif self.toolbar.selected_tool == UNGROUP_OBJECTS:
+                            pass
                             
 
 
