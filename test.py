@@ -196,6 +196,8 @@ class DrawingApp:
     def copy_object(self, obj):
         if isinstance(obj, Rectangle):
             copied_obj = Rectangle()
+            copied_obj.set_radius(obj.radius)
+            copied_obj.rounded=True
         elif isinstance(obj, Line):
             copied_obj = Line()
         else:
@@ -204,6 +206,7 @@ class DrawingApp:
         copied_obj.set_start_pos(obj.start_pos)
         copied_obj.set_end_pos(obj.end_pos)
         copied_obj.set_color(obj.color)
+        
         return copied_obj
 
     def run(self):
@@ -221,10 +224,13 @@ class DrawingApp:
                         elif 100 <= event.pos[0] < 160:
                             self.toolbar.select_tool(DRAW_RECT)
                         elif 180 <= event.pos[0] < 240:
+                            self.toolbar.selected_object = None
                             self.toolbar.select_color((255, 0, 0))
                         elif 260 <= event.pos[0] < 320:
+                            self.toolbar.selected_object = None
                             self.toolbar.select_color((0, 255, 0))
                         elif 340 <= event.pos[0] < 400:
+                            self.toolbar.selected_object = None
                             self.toolbar.select_color((0, 0, 255))
                         elif 440 <= event.pos[0] < 500 and HEIGHT - 80 <= event.pos[1] < HEIGHT - 30:
                             self.toolbar.select_tool(SELECT_OBJ)
@@ -255,7 +261,7 @@ class DrawingApp:
                             self.toolbar.select_button_color = BUTTON_COLOR
                             self.toolbar.radius_button_color = BUTTON_COLOR
                     else:  # Clicked on canvas
-                        if (self.toolbar.selected_tool == DRAW_LINE or self.toolbar.selected_tool == DRAW_RECT) and not self.toolbar.selected_object:
+                        if (self.toolbar.selected_tool == DRAW_LINE or self.toolbar.selected_tool == DRAW_RECT) :
                             if self.drawing_object is None:
                                 self.drawing_object = Line() if self.toolbar.selected_tool == DRAW_LINE else Rectangle()
                                 self.drawing_object.set_start_pos((event.pos[0], event.pos[1] - 100))
