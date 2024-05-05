@@ -1,13 +1,15 @@
 import pygame
+import xml.etree.ElementTree as ET
 
 # Initialize Pygame
 pygame.init()
 
 # Set up constants
-WIDTH = 1200
+WIDTH = 1300
 HEIGHT = 800
 CANVAS_COLOR = (255, 255, 255)
 TOOLBAR_COLOR = (200, 200, 200)
+TOOLBAR_COLOR2 = (250, 200, 200)
 BUTTON_COLOR = (150, 150, 150)
 SELECTED_BUTTON_COLOR = (100, 100, 100)
 LINE_WIDTH = 3
@@ -27,6 +29,9 @@ DECREASE_RADIUS=11
 SELECT_GROUP=12
 GROUP_OBJECTS=13
 UNGROUP_OBJECTS=14
+SAVE=15
+OPEN=16
+EXPORT_TO_XML=17
 
 # Object class
 class Object:
@@ -193,6 +198,38 @@ class Toolbar:
         ungroup_label = pygame.font.SysFont(None, 20).render("Ungroup", True, (0, 0, 0))  # Increased text size
         screen.blit(ungroup_label, (1090, HEIGHT - 85))  # Adjusted position
 
+class Menu:
+    def __init__(self):
+        self.button_height = 40
+        self.button_color = (150, 150, 150)
+        self.selected_tool=None
+        self.button_font = pygame.font.SysFont(None, 20)  # Font for button labels
+
+    def draw(self, screen):
+        # Draw the menu background
+        pygame.draw.rect(screen, TOOLBAR_COLOR2, (WIDTH - 100, 0, 100, HEIGHT))
+
+        # Define button positions
+        button_y_positions = [50, 150, 250]  # Adjusted positions
+        
+        draw_save_button_color = SELECTED_BUTTON_COLOR if self.selected_tool == SAVE else BUTTON_COLOR
+        draw_open_button_color = SELECTED_BUTTON_COLOR if self.selected_tool == OPEN else BUTTON_COLOR
+        draw_XML_button_color = SELECTED_BUTTON_COLOR if self.selected_tool == EXPORT_TO_XML else BUTTON_COLOR
+
+        # Draw "Save" button
+        pygame.draw.rect(screen, draw_save_button_color, (WIDTH - 90, button_y_positions[0], 80, self.button_height))
+        save_label = self.button_font.render("Save", True, (0, 0, 0))
+        screen.blit(save_label, (WIDTH - 80, button_y_positions[0] + 5))
+
+        # Draw "Open" button
+        pygame.draw.rect(screen, draw_open_button_color, (WIDTH - 90, button_y_positions[1], 80, self.button_height))
+        open_label = self.button_font.render("Open", True, (0, 0, 0))
+        screen.blit(open_label, (WIDTH - 80, button_y_positions[1] + 5))
+
+        # Draw "Export to XML" button
+        pygame.draw.rect(screen, draw_XML_button_color, (WIDTH - 90, button_y_positions[2], 80, self.button_height))
+        export_label = self.button_font.render("Export to XML", True, (0, 0, 0))
+        screen.blit(export_label, (WIDTH - 110, button_y_positions[2] + 5))  # Adjusted position for longer text
 
 
 # GroupedObject class
@@ -222,13 +259,154 @@ class DrawingApp:
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("Canvas with Toolbar")
 
-        self.canvas = pygame.Surface((WIDTH, HEIGHT - 100))  # Create a surface for the canvas
+        self.canvas = pygame.Surface((WIDTH-100, HEIGHT - 100))  # Create a surface for the canvas
         self.canvas.fill(CANVAS_COLOR)
 
         self.toolbar = Toolbar()
+        self.menu=Menu()
         self.objects = []
 
         self.drawing_object = None
+        
+    def export_to_xml(self, filename):
+        root = ET.Element("drawing")
+
+        for obj in self.objects:
+            if isinstance(obj, Line):
+                line_elem = ET.SubElement(root, "line")
+                begin_elem = ET.SubElement(line_elem, "begin")
+                ET.SubElement(begin_elem, "x").text = str(obj.start_pos[0])
+                ET.SubElement(begin_elem, "y").text = str(obj.start_pos[1])
+                end_elem = ET.SubElement(line_elem, "end")
+                ET.SubElement(end_elem, "x").text = str(obj.end_pos[0])
+                ET.SubElement(end_elem, "y").text = str(obj.end_pos[1])
+                ET.SubElement(line_elem, "color").text = self.color_to_string(obj.color)
+            elif isinstance(obj, Rectangle):
+                rect_elem = ET.SubElement(root, "rectangle")
+                upper_left_elem = ET.SubElement(rect_elem, "upper-left")
+                ET.SubElement(upper_left_elem, "x").text = str(obj.start_pos[0])
+                ET.SubElement(upper_left_elem, "y").text = str(obj.start_pos[1])
+                lower_right_elem = ET.SubElement(rect_elem, "lower-right")
+                ET.SubElement(lower_right_elem, "x").text = str(obj.end_pos[0])
+                ET.SubElement(lower_right_elem, "y").text = str(obj.end_pos[1])
+                ET.SubElement(rect_elem, "color").text = self.color_to_string(obj.color)
+                ET.SubElement(rect_elem, "corner").text = "rounded" if obj.rounded else "square"
+            # Add other object types as needed...
+
+        tree = ET.ElementTree(root)
+        tree.write(filename)
+
+    def color_to_string(self, color):
+        if color == (255, 0, 0):
+            return "red"
+        elif color == (0, 255, 0):
+            return "green"
+        elif color == (0, 0, 255):
+            return "blue"
+        elif color == (0, 0, 0):
+            return "black"
+        else:
+            return "unknown"
+        
+    def save_drawing(self, filename):
+        with open(filename, 'w') as file:
+            for obj in self.objects:
+                if isinstance(obj, Line):
+                    file.write(f"line {obj.start_pos[0]} {obj.start_pos[1]} {obj.end_pos[0]} {obj.end_pos[1]} ({obj.color[0]},{obj.color[1]},{obj.color[2]})\n")
+                elif isinstance(obj, Rectangle):
+                    style = "r" if obj.rounded else "s"
+                    rad=''
+                    if style=='r':
+                        rad=obj.radius
+                    file.write(f"rect {obj.start_pos[0]} {obj.start_pos[1]} {obj.end_pos[0]} {obj.end_pos[1]} ({obj.color[0]},{obj.color[1]},{obj.color[2]}) {style} {rad}\n")
+                elif isinstance(obj, GroupedObject):
+                    file.write("begin\n")
+                    for sub_obj in obj.objects:
+                        # Recursively save grouped objects
+                        self.save_grouped_object(file, sub_obj)
+                    file.write("end\n")
+    
+    def save_grouped_object(self, file, obj):
+        if isinstance(obj, Line):
+            file.write(f"line {obj.start_pos[0]} {obj.start_pos[1]} {obj.end_pos[0]} {obj.end_pos[1]} {obj.color}\n")
+        elif isinstance(obj, Rectangle):
+            style = "r" if obj.rounded else "s"
+            file.write(f"rect {obj.start_pos[0]} {obj.start_pos[1]} {obj.end_pos[0]} {obj.end_pos[1]} {obj.color} {style}\n")
+        elif isinstance(obj, GroupedObject):
+            file.write("begin\n")
+            for sub_obj in obj.objects:
+                self.save_grouped_object(file, sub_obj)
+            file.write("end\n")
+            
+    def open_drawing(self, filename):
+        with open(filename, 'r') as file:
+            for line in file:
+                line = line.strip().split()
+                if line[0] == "line":
+                    start_pos = (int(line[1]), int(line[2]))
+                    end_pos = (int(line[3]), int(line[4]))
+                    print(line[5])
+                    A=line[5].replace('(','').replace(')','').split(',')
+                    print(A)
+                    color = tuple(map(int,A ))
+                    new_line = Line()
+                    new_line.set_start_pos(start_pos)
+                    new_line.set_end_pos(end_pos)
+                    new_line.set_color(color)
+                    self.objects.append(new_line)
+                elif line[0] == "rect":
+                    start_pos = (int(line[1]), int(line[2]))
+                    end_pos = (int(line[3]), int(line[4]))
+                    print(line[5])
+                    A=line[5].replace('(','').replace(')','').split(',')
+                    print(A)
+                    color = tuple(map(int,A ))
+                    style = line[6]
+                    rounded = True if style == "r" else False
+                    rad=0
+                    if rounded==True:
+                        rad=int(line[7])
+                    new_rect = Rectangle(rounded=rounded)
+                    new_rect.set_start_pos(start_pos)
+                    new_rect.set_end_pos(end_pos)
+                    new_rect.set_color(color)
+                    new_rect.rounded=rounded
+                    new_rect.radius=rad
+                    self.objects.append(new_rect)
+                elif line[0] == "begin":
+                    group = GroupedObject()
+                    self.open_group(file, group)
+                    self.objects.append(group)
+
+    def open_group(self, file, group: GroupedObject):
+        for line in file:
+            line = line.strip().split()
+            if line[0] == "end":
+                return
+            elif line[0] == "line":
+                start_pos = (int(line[1]), int(line[2]))
+                end_pos = (int(line[3]), int(line[4]))
+                color = tuple(map(int, line[5].split(',')))
+                new_line = Line()
+                new_line.set_start_pos(start_pos)
+                new_line.set_end_pos(end_pos)
+                new_line.set_color(color)
+                group.add_object(new_line)
+            elif line[0] == "rect":
+                start_pos = (int(line[1]), int(line[2]))
+                end_pos = (int(line[3]), int(line[4]))
+                color = tuple(map(int, line[5].split(',')))
+                style = line[6]
+                rounded = True if style == "r" else False
+                new_rect = Rectangle(rounded=rounded)
+                new_rect.set_start_pos(start_pos)
+                new_rect.set_end_pos(end_pos)
+                new_rect.set_color(color)
+                group.add_object(new_rect)
+            elif line[0] == "begin":
+                sub_group = GroupedObject()
+                self.open_group(file, sub_group)
+                group.add_object(sub_group)
 
     def get_selected_object(self, pos):
         for obj in reversed(self.objects):
@@ -265,7 +443,22 @@ class DrawingApp:
                 if event.type == pygame.QUIT:
                     running = False
                 elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if HEIGHT - 100 <= event.pos[1] < HEIGHT:  # Check if toolbar area clicked
+                    if WIDTH - 100 <= event.pos[0] < WIDTH:  # Check if menu area clicked
+                        if 50 <= event.pos[1] < 50 + self.menu.button_height:  # Check if "Save" button clicked
+                            print("Save button clicked")
+                            self.menu.selected_tool=SAVE
+                            self.save_drawing("DRAWING_SAVE.txt")
+                            # Add code to handle "Save" button click
+                        elif 150 <= event.pos[1] < 150 + self.menu.button_height:  # Check if "Open" button clicked
+                            print("Open button clicked")
+                            self.menu.selected_tool=OPEN
+                            self.open_drawing("DRAWING_SAVE.txt")
+                            # Add code to handle "Open" button click
+                        elif 250 <= event.pos[1] < 250 + self.menu.button_height:  # Check if "Export to XML" button clicked
+                            print("Export to XML button clicked")
+                            self.export_to_xml("TEST.xml")
+                            self.menu.selected_tool=EXPORT_TO_XML
+                    elif HEIGHT - 100 <= event.pos[1] < HEIGHT:  # Check if toolbar area clicked
                         # Determine which tool was selected
                         if 20 <= event.pos[0] < 70:
                             self.toolbar.select_tool(DRAW_LINE)
@@ -389,6 +582,7 @@ class DrawingApp:
 
             # Draw toolbar
             self.toolbar.draw(self.screen)
+            self.menu.draw(self.screen)
 
             # Draw objects
             for obj in self.objects:
