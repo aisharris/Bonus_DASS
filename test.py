@@ -125,6 +125,8 @@ class Toolbar:
         increase_rounded_button_color = SELECTED_BUTTON_COLOR if self.selected_tool == INCREASE_RADIUS else BUTTON_COLOR
         decrease_rounded_button_color = SELECTED_BUTTON_COLOR if self.selected_tool == DECREASE_RADIUS else BUTTON_COLOR
         select_group_button_colour = SELECTED_BUTTON_COLOR if self.selected_tool == SELECT_GROUP else BUTTON_COLOR
+        group_button_colour = SELECTED_BUTTON_COLOR if self.selected_tool == GROUP_OBJECTS else BUTTON_COLOR
+        ungroup_button_colour = SELECTED_BUTTON_COLOR if self.selected_tool == UNGROUP_OBJECTS else BUTTON_COLOR
 
         # Button widths
         button_width = 50  # Decreased button width
@@ -184,17 +186,17 @@ class Toolbar:
         screen.blit(decrease_label, (880, HEIGHT - 85))  # Adjusted position
 
         # Draw select objects to group button
-        pygame.draw.rect(screen, BUTTON_COLOR, (940, HEIGHT - 80, button_width, button_height))  # Adjusted position
+        pygame.draw.rect(screen, select_group_button_colour, (940, HEIGHT - 80, button_width, button_height))  # Adjusted position
         select_objects_label = pygame.font.SysFont(None, 20).render("Select", True, (0, 0, 0))  # Increased text size
         screen.blit(select_objects_label, (950, HEIGHT - 85))  # Adjusted position
 
         # Draw group selected objects button
-        pygame.draw.rect(screen, BUTTON_COLOR, (1010, HEIGHT - 80, button_width, button_height))  # Adjusted position
+        pygame.draw.rect(screen, group_button_colour, (1010, HEIGHT - 80, button_width, button_height))  # Adjusted position
         group_selected_label = pygame.font.SysFont(None, 20).render("Group", True, (0, 0, 0))  # Increased text size
         screen.blit(group_selected_label, (1020, HEIGHT - 85))  # Adjusted position
 
         # Draw ungroup button
-        pygame.draw.rect(screen, BUTTON_COLOR, (1080, HEIGHT - 80, button_width, button_height))  # Adjusted position
+        pygame.draw.rect(screen, ungroup_button_colour, (1080, HEIGHT - 80, button_width, button_height))  # Adjusted position
         ungroup_label = pygame.font.SysFont(None, 20).render("Ungroup", True, (0, 0, 0))  # Increased text size
         screen.blit(ungroup_label, (1090, HEIGHT - 85))  # Adjusted position
 
@@ -237,6 +239,8 @@ class GroupedObject(Object):
     def __init__(self):
         super().__init__()
         self.objects = []  # List to hold individual objects in the group
+        self.top_left_x=10000
+        self.top_left_y=10000
 
     def add_object(self, obj):
         self.objects.append(obj)
@@ -247,6 +251,10 @@ class GroupedObject(Object):
     def draw(self, canvas):
         for obj in self.objects:
             obj.draw(canvas)
+            
+    def set_color(self, color):
+        for obj in self.objects:
+                obj.set_color(color)
 
     def move(self, pos):
         for obj in self.objects:
@@ -265,6 +273,8 @@ class DrawingApp:
         self.toolbar = Toolbar()
         self.menu=Menu()
         self.objects = []
+        
+        self.selected_for_grouping_list=[]
 
         self.drawing_object = None
         
@@ -291,11 +301,38 @@ class DrawingApp:
                 ET.SubElement(lower_right_elem, "y").text = str(obj.end_pos[1])
                 ET.SubElement(rect_elem, "color").text = self.color_to_string(obj.color)
                 ET.SubElement(rect_elem, "corner").text = "rounded" if obj.rounded else "square"
-            # Add other object types as needed...
+            else:
+                group_elem= ET.SubElement(root, "group")
+                self.export_to_xml_group(filename,obj,group_elem)
 
         tree = ET.ElementTree(root)
         tree.write(filename)
-
+        
+    def export_to_xml_group(self,filename,object:GroupedObject,root):
+        for obj in object.objects:
+            if isinstance(obj, Line):
+                line_elem = ET.SubElement(root, "line")
+                begin_elem = ET.SubElement(line_elem, "begin")
+                ET.SubElement(begin_elem, "x").text = str(obj.start_pos[0])
+                ET.SubElement(begin_elem, "y").text = str(obj.start_pos[1])
+                end_elem = ET.SubElement(line_elem, "end")
+                ET.SubElement(end_elem, "x").text = str(obj.end_pos[0])
+                ET.SubElement(end_elem, "y").text = str(obj.end_pos[1])
+                ET.SubElement(line_elem, "color").text = self.color_to_string(obj.color)
+            elif isinstance(obj, Rectangle):
+                rect_elem = ET.SubElement(root, "rectangle")
+                upper_left_elem = ET.SubElement(rect_elem, "upper-left")
+                ET.SubElement(upper_left_elem, "x").text = str(obj.start_pos[0])
+                ET.SubElement(upper_left_elem, "y").text = str(obj.start_pos[1])
+                lower_right_elem = ET.SubElement(rect_elem, "lower-right")
+                ET.SubElement(lower_right_elem, "x").text = str(obj.end_pos[0])
+                ET.SubElement(lower_right_elem, "y").text = str(obj.end_pos[1])
+                ET.SubElement(rect_elem, "color").text = self.color_to_string(obj.color)
+                ET.SubElement(rect_elem, "corner").text = "rounded" if obj.rounded else "square"
+            else:
+                group_elem= ET.SubElement(root, "group")
+                self.export_to_xml_group(filename,obj,group_elem)
+            
     def color_to_string(self, color):
         if color == (255, 0, 0):
             return "red"
@@ -328,10 +365,13 @@ class DrawingApp:
     
     def save_grouped_object(self, file, obj):
         if isinstance(obj, Line):
-            file.write(f"line {obj.start_pos[0]} {obj.start_pos[1]} {obj.end_pos[0]} {obj.end_pos[1]} {obj.color}\n")
+            file.write(f"line {obj.start_pos[0]} {obj.start_pos[1]} {obj.end_pos[0]} {obj.end_pos[1]} ({obj.color[0]},{obj.color[1]},{obj.color[2]})\n")
         elif isinstance(obj, Rectangle):
             style = "r" if obj.rounded else "s"
-            file.write(f"rect {obj.start_pos[0]} {obj.start_pos[1]} {obj.end_pos[0]} {obj.end_pos[1]} {obj.color} {style}\n")
+            rad=''
+            if style=='r':
+                rad=obj.radius
+            file.write(f"rect {obj.start_pos[0]} {obj.start_pos[1]} {obj.end_pos[0]} {obj.end_pos[1]} ({obj.color[0]},{obj.color[1]},{obj.color[2]}) {style} {rad}\n")
         elif isinstance(obj, GroupedObject):
             file.write("begin\n")
             for sub_obj in obj.objects:
@@ -339,15 +379,15 @@ class DrawingApp:
             file.write("end\n")
             
     def open_drawing(self, filename):
+        
         with open(filename, 'r') as file:
             for line in file:
+                #print(line)
                 line = line.strip().split()
                 if line[0] == "line":
                     start_pos = (int(line[1]), int(line[2]))
                     end_pos = (int(line[3]), int(line[4]))
-                    print(line[5])
                     A=line[5].replace('(','').replace(')','').split(',')
-                    print(A)
                     color = tuple(map(int,A ))
                     new_line = Line()
                     new_line.set_start_pos(start_pos)
@@ -357,9 +397,7 @@ class DrawingApp:
                 elif line[0] == "rect":
                     start_pos = (int(line[1]), int(line[2]))
                     end_pos = (int(line[3]), int(line[4]))
-                    print(line[5])
                     A=line[5].replace('(','').replace(')','').split(',')
-                    print(A)
                     color = tuple(map(int,A ))
                     style = line[6]
                     rounded = True if style == "r" else False
@@ -380,13 +418,15 @@ class DrawingApp:
 
     def open_group(self, file, group: GroupedObject):
         for line in file:
+            #print(line)
             line = line.strip().split()
             if line[0] == "end":
                 return
             elif line[0] == "line":
                 start_pos = (int(line[1]), int(line[2]))
                 end_pos = (int(line[3]), int(line[4]))
-                color = tuple(map(int, line[5].split(',')))
+                A=line[5].replace('(','').replace(')','').split(',')
+                color = tuple(map(int,A ))
                 new_line = Line()
                 new_line.set_start_pos(start_pos)
                 new_line.set_end_pos(end_pos)
@@ -395,14 +435,20 @@ class DrawingApp:
             elif line[0] == "rect":
                 start_pos = (int(line[1]), int(line[2]))
                 end_pos = (int(line[3]), int(line[4]))
-                color = tuple(map(int, line[5].split(',')))
+                A=line[5].replace('(','').replace(')','').split(',')
+                color = tuple(map(int,A ))
                 style = line[6]
                 rounded = True if style == "r" else False
+                rad=0
+                if rounded==True:
+                    rad=int(line[7])
                 new_rect = Rectangle(rounded=rounded)
                 new_rect.set_start_pos(start_pos)
                 new_rect.set_end_pos(end_pos)
                 new_rect.set_color(color)
-                group.add_object(new_rect)
+                new_rect.rounded=rounded
+                new_rect.radius=rad
+                group.objects.append(new_rect)
             elif line[0] == "begin":
                 sub_group = GroupedObject()
                 self.open_group(file, sub_group)
@@ -417,8 +463,58 @@ class DrawingApp:
             elif isinstance(obj, Line):
                 if obj.start_pos[0] <= pos[0] <= obj.end_pos[0] and obj.start_pos[1] <= pos[1] <= obj.end_pos[1]:
                     return obj
+            elif isinstance(obj, GroupedObject):
+                selected_obj = self.get_selected_object_grp(pos, obj)
+                if selected_obj:
+                    return selected_obj
         return None
 
+    def get_selected_object_grp(self, pos, grp: GroupedObject):
+        for obj in reversed(grp.objects):
+            if isinstance(obj, Rectangle):
+                rect = pygame.Rect(obj.start_pos[0], obj.start_pos[1], abs(obj.end_pos[0] - obj.start_pos[0]), abs(obj.end_pos[1] - obj.start_pos[1]))
+                if rect.collidepoint(pos):
+                    return grp
+            elif isinstance(obj, Line):
+                if obj.start_pos[0] <= pos[0] <= obj.end_pos[0] and obj.start_pos[1] <= pos[1] <= obj.end_pos[1]:
+                    return grp
+            elif isinstance(obj, GroupedObject):
+                selected_obj = self.get_selected_object_grp(pos, obj)
+                if selected_obj:
+                    return grp
+        return None
+    
+    def get_selected_object_rounded(self, pos):
+        #print('here')
+        for obj in reversed(self.objects):
+            if isinstance(obj, Rectangle):
+                rect = pygame.Rect(obj.start_pos[0], obj.start_pos[1], abs(obj.end_pos[0] - obj.start_pos[0]), abs(obj.end_pos[1] - obj.start_pos[1]))
+                if rect.collidepoint(pos):
+                    return obj
+            elif isinstance(obj, Line):
+                if obj.start_pos[0] <= pos[0] <= obj.end_pos[0] and obj.start_pos[1] <= pos[1] <= obj.end_pos[1]:
+                    return obj
+            elif isinstance(obj, GroupedObject):
+                selected_obj = self.get_selected_object_grp_rounded(pos, obj)
+                if selected_obj:
+                    return selected_obj
+        return None
+
+    def get_selected_object_grp_rounded(self, pos, grp: GroupedObject):
+        for obj in reversed(grp.objects):
+            if isinstance(obj, Rectangle):
+                rect = pygame.Rect(obj.start_pos[0], obj.start_pos[1], abs(obj.end_pos[0] - obj.start_pos[0]), abs(obj.end_pos[1] - obj.start_pos[1]))
+                if rect.collidepoint(pos):
+                    return obj
+            elif isinstance(obj, Line):
+                if obj.start_pos[0] <= pos[0] <= obj.end_pos[0] and obj.start_pos[1] <= pos[1] <= obj.end_pos[1]:
+                    return obj
+            elif isinstance(obj, GroupedObject):
+                selected_obj = self.get_selected_object_grp_rounded(pos, obj)
+                if selected_obj:
+                    return selected_obj
+        return None
+    
     def copy_object(self, obj):
         if isinstance(obj, Rectangle):
             copied_obj = Rectangle()
@@ -450,8 +546,15 @@ class DrawingApp:
                             self.save_drawing("DRAWING_SAVE.txt")
                             # Add code to handle "Save" button click
                         elif 150 <= event.pos[1] < 150 + self.menu.button_height:  # Check if "Open" button clicked
-                            print("Open button clicked")
+                            print("Open button clicked: objects after clearing is")
                             self.menu.selected_tool=OPEN
+                            for i in range(0,len(self.objects)):
+                                self.objects.remove(self.objects[0])
+                            self.drawing_object=None
+                            self.canvas.fill(CANVAS_COLOR)
+                            self.toolbar.draw(self.screen)
+                            self.menu.draw(self.screen)
+                            self.toolbar.selected_object = None
                             self.open_drawing("DRAWING_SAVE.txt")
                             # Add code to handle "Open" button click
                         elif 250 <= event.pos[1] < 250 + self.menu.button_height:  # Check if "Export to XML" button clicked
@@ -505,6 +608,20 @@ class DrawingApp:
                             self.toolbar.select_tool(SELECT_GROUP)
                         elif 1010 <= event.pos[0] < 1060 and HEIGHT - 80 <= event.pos[1] < HEIGHT - 30:
                             self.toolbar.select_tool(GROUP_OBJECTS)
+                            if(len(self.selected_for_grouping_list)>0):
+                                grouped_obj=GroupedObject()
+                                for obj in self.selected_for_grouping_list:
+                                    grouped_obj.add_object(obj)
+                                    #if(obj.start_pos[0]<grouped_obj.top_left_x):
+                                    #    grouped_obj.top_left_x=obj.start_pos[0]
+                                    #if(obj.start_pos[0]<grouped_obj.top_left_x):
+                                    #    grouped_obj.top_left_x=obj.start_pos[0]
+                                for obj in self.selected_for_grouping_list:
+                                    self.objects.remove(obj)
+                                self.selected_for_grouping_list.clear()
+                                self.objects.append(grouped_obj)
+                                self.toolbar.selected_tool=None
+                                
                         elif 1080 <= event.pos[0] < 1130 and HEIGHT - 80 <= event.pos[1] < HEIGHT - 30:
                             self.toolbar.select_tool(UNGROUP_OBJECTS)
                         else:
@@ -563,16 +680,24 @@ class DrawingApp:
                             self.drawing_object = None
                             
                         elif self.toolbar.selected_tool== ROUNDED_SELECT:
-                            self.toolbar.selected_object = self.get_selected_object(event.pos)
+                            self.toolbar.selected_object = self.get_selected_object_rounded(event.pos)
+                            print(self.toolbar.selected_object)
                             
                         elif self.toolbar.selected_tool== SELECT_GROUP:
-                            pass
-                        
-                        elif self.toolbar.selected_tool == GROUP_OBJECTS:
-                            pass
+                            obj=self.get_selected_object(event.pos)
+                            if(obj!=None):
+                                self.selected_for_grouping_list.append(obj)
                         
                         elif self.toolbar.selected_tool == UNGROUP_OBJECTS:
-                            pass
+                            print('here')
+                            self.toolbar.selected_object = self.get_selected_object(event.pos)
+                            print(self.toolbar.selected_object)
+                            if isinstance(self.toolbar.selected_object,GroupedObject):
+                                list_obj=[]
+                                for o in self.toolbar.selected_object.objects:
+                                    list_obj.append(o)
+                                self.objects.remove(self.toolbar.selected_object)
+                                self.objects.extend(list_obj)
                             
 
 
@@ -587,6 +712,14 @@ class DrawingApp:
             # Draw objects
             for obj in self.objects:
                 obj.draw(self.canvas)
+                #print(obj)
+                
+            #print()
+            #
+            #for obj in self.selected_for_grouping_list:
+            #    print(obj)
+            #    
+            #print()
 
             # Draw the current drawing object
             if self.drawing_object:
