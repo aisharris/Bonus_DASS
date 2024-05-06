@@ -257,8 +257,21 @@ class GroupedObject(Object):
                 obj.set_color(color)
 
     def move(self, pos):
+        # Calculate displacement between new top-left and current top-left
+        delta_x = pos[0] - self.top_left_x
+        delta_y = pos[1] - self.top_left_y
+        
+        # Update top-left position
+        self.top_left_x = pos[0]
+        self.top_left_y = pos[1]
+
+        # Move all objects in the group by the same displacement
         for obj in self.objects:
-            obj.move(pos)
+            if isinstance(obj,GroupedObject):
+                obj.move((obj.top_left_x + delta_x, obj.top_left_y + delta_y))
+            else:
+                obj.move((obj.start_pos[0] + delta_x, obj.start_pos[1] + delta_y))
+
 
 
 # Main game class
@@ -432,6 +445,10 @@ class DrawingApp:
                 new_line.set_end_pos(end_pos)
                 new_line.set_color(color)
                 group.add_object(new_line)
+                if(new_line.start_pos[0]<group.top_left_x):
+                    group.top_left_x=new_line.start_pos[0]
+                if(new_line.start_pos[1]<group.top_left_y):
+                    group.top_left_y=new_line.start_pos[1]
             elif line[0] == "rect":
                 start_pos = (int(line[1]), int(line[2]))
                 end_pos = (int(line[3]), int(line[4]))
@@ -449,10 +466,18 @@ class DrawingApp:
                 new_rect.rounded=rounded
                 new_rect.radius=rad
                 group.objects.append(new_rect)
+                if(new_rect.start_pos[0]<group.top_left_x):
+                    group.top_left_x=new_rect.start_pos[0]
+                if(new_rect.start_pos[1]<group.top_left_y):
+                    group.top_left_y=new_rect.start_pos[1]
             elif line[0] == "begin":
                 sub_group = GroupedObject()
                 self.open_group(file, sub_group)
                 group.add_object(sub_group)
+                if(sub_group.top_left_x<group.top_left_x):
+                    group.top_left_x=sub_group.top_left_x
+                if(sub_group.top_left_y<group.top_left_y):
+                    group.top_left_y=sub_group.top_left_y
 
     def get_selected_object(self, pos):
         for obj in reversed(self.objects):
@@ -520,14 +545,27 @@ class DrawingApp:
             copied_obj = Rectangle()
             copied_obj.set_radius(obj.radius)
             copied_obj.rounded=True
+            copied_obj.set_start_pos(obj.start_pos)
+            copied_obj.set_end_pos(obj.end_pos)
+            copied_obj.set_color(obj.color)
         elif isinstance(obj, Line):
             copied_obj = Line()
+            copied_obj.set_start_pos(obj.start_pos)
+            copied_obj.set_end_pos(obj.end_pos)
+            copied_obj.set_color(obj.color)
+        elif isinstance(obj,GroupedObject):
+            copied_obj= GroupedObject()
+            copied_obj.top_left_x=obj.top_left_x
+            copied_obj.top_left_y=obj.top_left_y
+            for sub_obj in obj.objects:
+                copied_sub_obj = self.copy_object(sub_obj)
+                if copied_sub_obj is not None:
+                    copied_obj.add_object(copied_sub_obj)
+            
         else:
             return None
 
-        copied_obj.set_start_pos(obj.start_pos)
-        copied_obj.set_end_pos(obj.end_pos)
-        copied_obj.set_color(obj.color)
+        
         
         return copied_obj
 
@@ -612,10 +650,10 @@ class DrawingApp:
                                 grouped_obj=GroupedObject()
                                 for obj in self.selected_for_grouping_list:
                                     grouped_obj.add_object(obj)
-                                    #if(obj.start_pos[0]<grouped_obj.top_left_x):
-                                    #    grouped_obj.top_left_x=obj.start_pos[0]
-                                    #if(obj.start_pos[0]<grouped_obj.top_left_x):
-                                    #    grouped_obj.top_left_x=obj.start_pos[0]
+                                    if(obj.start_pos[0]<grouped_obj.top_left_x):
+                                        grouped_obj.top_left_x=obj.start_pos[0]
+                                    if(obj.start_pos[1]<grouped_obj.top_left_y):
+                                        grouped_obj.top_left_y=obj.start_pos[1]
                                 for obj in self.selected_for_grouping_list:
                                     self.objects.remove(obj)
                                 self.selected_for_grouping_list.clear()
@@ -671,13 +709,18 @@ class DrawingApp:
                             self.toolbar.selected_tool = PASTE
                         elif self.toolbar.selected_tool == PASTE:
                             copied_obj = self.copy_object(self.toolbar.selected_object)
-                            delta_x = event.pos[0] - copied_obj.start_pos[0]
-                            delta_y = event.pos[1] - copied_obj.start_pos[1]
-                            copied_obj.start_pos = event.pos
-                            copied_obj.end_pos = (copied_obj.end_pos[0] + delta_x, copied_obj.end_pos[1] + delta_y)
-                            copied_obj.set_start_pos(event.pos)
-                            self.objects.append(copied_obj)
-                            self.drawing_object = None
+                            if isinstance(copied_obj,Line) or isinstance(copied_obj,Rectangle):
+                                delta_x = event.pos[0] - copied_obj.start_pos[0]
+                                delta_y = event.pos[1] - copied_obj.start_pos[1]
+                                copied_obj.start_pos = event.pos
+                                copied_obj.end_pos = (copied_obj.end_pos[0] + delta_x, copied_obj.end_pos[1] + delta_y)
+                                copied_obj.set_start_pos(event.pos)
+                                self.objects.append(copied_obj)
+                                self.drawing_object = None
+                            elif isinstance(copied_obj,GroupedObject):
+                                print('here is it')
+                                copied_obj.move(event.pos)
+                                self.objects.append(copied_obj)
                             
                         elif self.toolbar.selected_tool== ROUNDED_SELECT:
                             self.toolbar.selected_object = self.get_selected_object_rounded(event.pos)
